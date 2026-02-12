@@ -254,6 +254,41 @@ def modularity(G, communities, weight="weight", resolution=1):
     return sum(map(community_contribution, communities))
 
 
+def _constant_potts_model_remove_cost(
+    G, node, community, resolution, weight="weight", node_weight="node_weight"
+):
+    """
+    The change in CPM value from removing node from the community. Can be used
+    with
+
+        constant_potts_model_add_cost
+
+    to compute the overall quality delta from moving a node u from community A
+    to community B
+    """
+    n_A_prime = sum(
+        wt for u, wt in G.nodes(data=node_weight) if u in community - {node}
+    )
+    u_wt = G.nodes[node][node_weight]
+    E_del = sum(wt for u, v, wt in G.edges({node}, data=weight) if v in community)
+    q_A = resolution * (2 * n_A_prime * u_wt + u_wt**2) - E_del
+
+    return q_A
+
+
+def _constant_potts_model_add_cost(
+    G, node, community, resolution, weight="weight", node_weight="node_weight"
+):
+    n_B = sum(wt for u, wt in G.nodes(data=node_weight) if u in community)
+    u_wt = G.nodes[node][node_weight]
+    E_del = sum(
+        wt for u, v, wt in G.edges({node}, data=weight) if v in community.union({node})
+    )
+    q_B = E_del - resolution * (2 * n_B * u_wt + u_wt**2)
+
+    return q_B
+
+
 def constant_potts_model(
     G,
     communities,
